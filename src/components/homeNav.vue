@@ -47,7 +47,7 @@
           </li>
         </ul>
         <!-- 登录 -->
-        <div class="my-login fr" @mouseover="showLogin=true" @mouseout="showLogin=false">
+        <div class="my-login fr" @mouseover="showLogin=true" @mouseout="showLogin=false" v-if="!userData.length">
           <a href="#" class="login"  @click.stop="showLoginBox(3)">登录</a>
           <div class="my-login-way" v-show="showLogin">
             <div class="my-way">
@@ -84,6 +84,9 @@
             </div>
             <i class="login-ioc"></i>
           </div>
+        </div>
+        <div class="my-user fr" v-else>
+          <img :src="userPhoto.avatarUrl">
         </div>
         <!-- 创作者中心 -->
         <div class="my-write fr">
@@ -149,12 +152,12 @@
                       <a href="JavaScript:;" v-show="!way">
                         <span>{{phoneData}}</span>
                       </a>
-                      <input class="user" type="number" :placeholder="way ? '请输入账号' : '请输入手机号'">
+                      <input class="user" :type="way ? 'text' : 'number'" v-model="form.user" :placeholder="way ? '请输入账号' : '请输入手机号'">
                     </div>
                   </li>
                   <li>
                     <div class="my-password">
-                      <input class="password" type="password" placeholder="请输入密码">
+                      <input class="password" type="password" v-model="form.password" placeholder="请输入密码">
                     </div>
                   </li>
                   <li>
@@ -164,24 +167,27 @@
                     </div>
                   </li>
                   <li>
-                    <div class="btn-login">
+                    <div class="btn-login" @click="login">
                       登&nbsp;&nbsp;&nbsp;录
                     </div>
                   </li>
                 </ul>
               </div>
               <div class="below" v-show="!showWay">
-
+                <div style="float:left;color:#0c72c3;cursor:pointer;" @click.stop="showWay = true">&lt;&nbsp;其他登录方式</div>
+                <div style="float:right;color:#999;cursor:pointer;">没有账号?免费注册&nbsp;&gt;</div>
               </div>
             </div>
         </my-login>
       </div>
     </nav>
+    <div class="my-wire"></div>
   </div>
 </template>
 
 <script>
 import myLogin from "./login";
+import { loginPhone,login } from '../api/axios'
 export default {
   // 注册组件
   components: {
@@ -196,12 +202,18 @@ export default {
       showWay: true,
       way: true,
       title: '',
-      phoneData: '+86'
+      phoneData: '+86',
+      form: {
+        user: '',
+        password: ''
+      },
+      userData: [], // 用户数据
+      userPhoto: {}, // 用户头像
     };
   },
   //方法
   methods: {
-    showLoginBox(index){
+    showLoginBox(index) {
       if(index === 1){
         this.title = "手机号登录"
         this.loginBox = true
@@ -219,8 +231,35 @@ export default {
       }else{
         this.loginBox = false
       }
+    },
+    login() { // 手机登录
+      if(this.way){
+        login(this.form).then( res => {
+          console.log(res);
+        })
+      } else {
+        loginPhone(this.form).then( res => {
+          if(res.data.code === 200){
+            let str = encodeURIComponent(JSON.stringify(res.data.bindings))
+            let str1 = encodeURIComponent(JSON.stringify(res.data.profile))
+            localStorage.user = str;
+            localStorage.userPhoto = str1;
+            this.loginBox = false
+            this.userData = res.data.bindings
+            this.userPhoto = res.data.profile
+          } else {
+            alert('登录失败！')
+          }
+        })
+      }
     }
-  }
+  },
+  created() {
+    if(localStorage.getItem('user')){
+      this.userData = JSON.parse(decodeURIComponent(localStorage.user));
+      this.userPhoto = JSON.parse(decodeURIComponent(localStorage.userPhoto));
+    }
+  },
 };
 </script>
 
@@ -548,6 +587,24 @@ nav {
     border-top: 1px solid #c6c6c6;
     border-bottom-right-radius: 5px;
     border-bottom-left-radius: 5px;
+    padding: 0 15px;
+    box-sizing: border-box;
+    line-height: 49px;
   }
+}
+.my-user{
+  height: 45px;
+  margin: 19px 0 0 20px;
+  padding: 0 22px 0 0;
+  img{
+    width: 30px;
+    height: 30px;
+    border-radius: 30px;
+  }
+}
+.my-wire{
+  width: 100%;
+  height: 5px;
+  background-color: #d20a0a;
 }
 </style>
