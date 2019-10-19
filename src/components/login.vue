@@ -26,6 +26,7 @@ export default {
     right: 0;
     top: 0;
     bottom: 0;
+    z-index: 5;
     .my-shade{
         width: 100%;
         height: 100%;

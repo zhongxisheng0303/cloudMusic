@@ -187,7 +187,7 @@
 
 <script>
 import myLogin from "./login";
-import { loginPhone,login } from '../api/axios'
+import { loginPhone } from '../api/axios'
 export default {
   // 注册组件
   components: {
@@ -232,12 +232,10 @@ export default {
         this.loginBox = false
       }
     },
-    login() { // 手机登录
-      if(this.way){
-        login(this.form).then( res => {
-          console.log(res);
-        })
-      } else {
+    login() { // 登录
+      if(this.way){ // 邮箱登录
+        
+      } else { // 手机登录
         loginPhone(this.form).then( res => {
           if(res.data.code === 200){
             let str = encodeURIComponent(JSON.stringify(res.data.bindings))
@@ -347,6 +345,7 @@ nav {
     position: absolute;
     top: 38px;
     right: -43px;
+    z-index: 4;
     width: 158px;
     background-color: #2b2b2b;
     border-radius: 5px;

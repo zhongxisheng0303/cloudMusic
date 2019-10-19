@@ -20,12 +20,14 @@
     html {
         width: 100%;
         overflow-x: hidden;
+        font-family: '微软雅黑';
     }
 
     body {
         width: 100%;
         font-size: 12px;
         cursor: default;
+        font-family: '微软雅黑';
         background-color: #f5f5f5;
     }
 

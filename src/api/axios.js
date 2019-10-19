@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 // 导入router
-import router from '../router/router'
+// import router from '../router/router'
 
 // 创建axios,并且设置基地址
 const api = axios.create({
@@ -28,4 +28,12 @@ export const login = ({user,password}) => { // 邮箱登录
 
 export const banner = () => { // 轮播图
     return api.get('banner')
+}
+
+export const songList = () => { // 歌单
+    return api.get('personalized',{
+        params:{
+            limit: 8
+        }
+    })
 }
