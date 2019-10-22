@@ -37,3 +37,19 @@ export const songList = () => { // 歌单
         }
     })
 }
+
+export const songListDetails = (id) => { // 歌单详情
+    return api.get('/playlist/detail',{
+        params: {
+            id
+        }
+    })
+}
+
+export const getSongUrl = (id) => { // 获取歌曲地址
+    return api.get('/song/url',{
+        params: {
+            id
+        }
+    })
+}

@@ -7,7 +7,7 @@
             <div class="song">
                 <span class="song-i"></span>
                 <span class="song-measure">{{ parseInt(item.playCount / 10000) }}万</span>
-                <a href="JavaScript:;" class="play"></a>
+                <a href="JavaScript:;" class="play" @click.stop="getSongListDetails(item.id)"></a>
             </div>
         </div>
         <p class="song-title">{{ item.name }}</p>
@@ -16,7 +16,7 @@
 </template>
 
 <script>
-import {songList} from '../../../api/axios'
+import {songList, songListDetails} from '../../../api/axios'
 export default {
     name: 'songList',
     data() {
@@ -29,6 +29,13 @@ export default {
             songList().then( res => {
                 if(res.data.code === 200){
                     this.songList = res.data.result
+                }
+            })
+        },
+        getSongListDetails(id) { // 获取歌单的歌曲
+            songListDetails(id).then( res => {
+                if(res.data.code === 200){ // 将歌曲列表添加到vuex
+                    this.$store.dispatch('getMuisc',res.data.playlist.tracks)
                 }
             })
         }
