@@ -51,8 +51,9 @@ export default {
     margin-top: 20px;
     li{
         float: left;
-        width: 172px;
+        width: 161px;
         height: 234px;
+        padding-left: 11px;
         .song-box{
             width: 140px;
             height: 140px;
