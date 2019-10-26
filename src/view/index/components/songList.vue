@@ -35,6 +35,7 @@ export default {
         getSongListDetails(id) { // 获取歌单的歌曲
             songListDetails(id).then( res => {
                 if(res.data.code === 200){ // 将歌曲列表添加到vuex
+                    localStorage.setItem('songData',JSON.stringify(res.data.playlist.tracks))
                     this.$store.dispatch('getMuisc',res.data.playlist.tracks)
                 }
             })

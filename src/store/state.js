@@ -5,9 +5,10 @@ import Vuex from 'vuex'
 // use路由
 Vue.use(Vuex)
 
+let songList = JSON.parse(localStorage.getItem('songData'))
 const store = new Vuex.Store({
     state: {
-      muiscList: [],
+      muiscList: songList ? songList : []
     },
     mutations: {
      getMuisc(state,data) {

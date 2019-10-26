@@ -7,7 +7,7 @@
         <audio
           :src="songUrl"
           ref="audio"
-          autoplay
+          :autoplay="autoStart"
           @ended="playOver"
           @loadedmetadata="songTime"
           @timeupdate="timeupdate"
@@ -38,6 +38,7 @@
               <div class="pb" ref="pb">
                 <span ref="dian"></span>
               </div>
+              <div class="hc" ref="hc"></div>
             </div>
             <span class="time">
               <span>{{time != '' ? time : '00:00'}}</span> /
@@ -82,17 +83,26 @@
             </div>
           </div>
           <div class="right">
-            {{ songName }}
+            <span>{{ songName }}</span>
             <a href="JavaScript:;" class="close" @click.stop="playList = false"></a>
           </div>
         </div>
         <div class="listPlay">
-          <div class="wrapper">
+          <div class="wrapper" ref="wrapper">
             <ul class="ul-list">
-              <li v-for="(item,index) in songList" :key="index">
-                <span class="songName">{{ item.name }}</span>
-                <span class="songSinger">{{ item.ar[0].name }}</span>
-                <span class="songTime">{{ item.dt / 1000 | filterTime }}</span>
+              <li v-for="(item,index1) in songList" :key="index1" ref="list" @click.stop="selectPlay(item,index1)" @mouseover="enterTntoItme(index1)" @mouseout="leaveItme(index1)">
+                <i class="play-icon">
+                  <div class="icon" v-if="index == index1"></div>
+                </i>
+                <span class="songName" :style="{'color': (index == index1 ? '#fff' : '')}">{{ item.name }}</span>
+                <span class="goNeng hidden">
+                  <i class="icon1" title="收藏"></i>
+                  <i class="icon2" title="转发"></i>
+                  <i class="icon3" title="下载"></i>
+                  <i class="icon4" title="删除"></i>
+                </span>
+                <span class="songSinger" :style="{'color': (index == index1 ? '#fff' : '')}">{{ item.ar[0].name }}</span>
+                <span class="songTime" :style="{'color': (index == index1 ? '#fff' : '')}">{{ item.dt / 1000 | filterTime }}</span>
               </li>
             </ul>
           </div>
@@ -104,8 +114,6 @@
 
 <script>
 import { getSongUrl } from "../api/axios";
-//导入iscroll
-import IScroll from "better-scroll";
 export default {
   name: "player",
   data() {
@@ -119,116 +127,139 @@ export default {
       totalTime: "",
       time: "",
       number: "",
-      showVolume: false,
-      remove: true,
-      remove1: true,
-      title: '循环',
-      single: false,
-      random: false,
-      playList:false,
+      showVolume: false, // 是否显示音量
+      remove: true, // 是否移除移入和移出事件
+      title: '循环', // 播放顺序
+      single: false, // 单曲循环
+      random: false, // 随机播放
+      playList:false, // 是否显示播放列表
+      autoStart: false, // 自动播放
+      add_index: null, // 是否是上一首还是下一首
+      stopTime: null, // 定时间的变量
     };
   },
   watch: { // 监听器
-    songList(to, from) { // 监听歌单是否改变
-      let toId = to[0].id;
-      let fromId = from[0] ? from[0].id : 0;
-      if (toId != fromId) {
-        this.stop();
-        // 重新赋值
-        this.songId = to[0].id;
-        // 歌曲数量
-        this.number = to.length;
-        // 下标重置
-        this.index = 0;
-        // 重新获取
-        this.getUrl();
-      }
-    },
-    index(to, from) { // 监听下标是否改变
-      if (to != from) {
-        if (to >= this.songList.lengrh - 1) {
-          this.stop();
-          // 重新赋值
-          this.songId = this.songList[0].id;
-          // 重新获取
-          this.getUrl();
-        } else if (to < 0) {
-          this.stop();
-          // 重新赋值
-          this.songId = this.songList[this.songList.length - 1].id;
-          this.index = this.songList.length - 1;
-          // 重新获取
-          this.getUrl();
-        } else {
-          this.stop();
-          // 重新赋值
-          this.songId = this.songList[this.index].id;
-          // 重新获取
-          this.getUrl();
-        }
-      }
+    songList(to) { // 监听歌单是否改变
+      let audio = this.$refs.audio
+      audio.pause()
+      this.$refs.stop.style.backgroundPosition = "-2px -204px";
+      audio.currentTime = 0
+      this.songId = to[0].id // 重新赋值
+      this.number = to.length // 歌曲数量
+      this.index = 0 // 下标重置
+      this.playList = false // 隐藏播放列表
+      this.getUrl() // 重新获取
     }
   },
   methods: {
     shiftIn() {
-      this.$refs.muisc.style.top = "-47px";
+      this.$refs.muisc.style.top = "-47px"
+      clearTimeout(this.stopTime) // 停止定时器
     },
     shiftOut() {
-      this.$refs.muisc.style.top = "-5px";
+      this.$refs.muisc.style.top = "-5px"
     },
     getUrl() { // 获取歌曲地址
+      this.autoStart = true
+      let audio = this.$refs.audio
       getSongUrl(this.songId).then(res => {
         if (res.data.code === 200) {
-          this.$refs.stop.style.backgroundPosition = "-2px -165px";
-          this.songUrl = res.data.data[0].url;
-          this.songImg = this.songList[this.index].al.picUrl;
-          this.songName = this.songList[this.index].name;
-          this.songSinger = this.songList[this.index].ar[0].name;
+          audio.play()
+          if(res.data.data[0].code === 404){ // 判断是否有歌曲
+            if(this.add_index == 1){ // 判断是否是上一首
+              this.index++
+              this.songId = this.songList[this.index].id
+              this.getUrl()
+            } else if(this.add_index == 2){ // 判断是否是下一首
+              this.index--
+              this.songId = this.songList[this.index].id
+              this.getUrl()
+            } else {
+              this.index++
+              this.songId = this.songList[this.index].id
+              audio.currentTime = 0
+              this.getUrl()
+            }
+          } else { // 正常流程
+            this.highlight()
+            this.$refs.stop.style.backgroundPosition = "-2px -165px"
+            this.songUrl = res.data.data[0].url
+            this.songImg = this.songList[this.index].al.picUrl
+            this.songName = this.songList[this.index].name
+            this.songSinger = this.songList[this.index].ar[0].name
+            localStorage.setItem('index',this.index)
+          }
         }
       });
     },
     playOver() { // 播放结束下一首/点击下一首
-      if(this.title == '随机' && this.random){
+      this.add_index = 1
+      if(this.title == '随机' && this.random){ // 随机播放
         this.index = Math.floor(Math.random() * this.songList.length - 1)
-      } else if (this.index >= this.songList.length - 1) {
-        this.index = 0;
-      } else if (this.songUrl != "") {
-        this.index++;
-      }  
+        this.stop()
+        this.songId = this.songList[this.index].id
+        this.getUrl()
+      } else if (this.index >= this.songList.length - 1) { // 最后一首切换到第一首
+        this.index = 0
+        this.stop()
+        this.songId = this.songList[0].id
+        this.getUrl()
+      } else if (this.songUrl != "" ){ // 正常循环
+        this.index++
+        this.stop()
+        this.songId = this.songList[this.index].id
+        this.getUrl()
+      }
     },
     upSong() { // 上一首
-      if(this.title == '随机' && this.random){
+      this.add_index = 2
+      if(this.title == '随机' && this.random){ // 随机播放
         this.index = Math.floor(Math.random() * this.songList.length - 1)
-      } else if (this.songUrl != "") {
-        this.index--;
+        this.stop()
+        this.songId = this.songList[this.index].id
+        this.getUrl()
+      } else if(this.index <= 0){ // 第一首切换到最后一首
+        this.index = this.songList.length - 1
+        this.stop()
+        this.songId = this.songList[this.index].id
+        this.getUrl()
+      } else if (this.songUrl != "") { // 正常循环
+        this.index--
+        this.stop()
+        this.songId = this.songList[this.index].id
+        this.getUrl()
       } 
     },
     stop() { // 暂停/播放
-      let audio = this.$refs.audio;
+      let audio = this.$refs.audio
       if (this.songUrl != "") {
         if (audio.paused) {
-          audio.play();
+          audio.play()
           this.$refs.stop.style.backgroundPosition = "-2px -165px";
+          this.highlight()
         } else {
-          audio.pause();
+          audio.pause()
           this.$refs.stop.style.backgroundPosition = "-2px -204px";
         }
       }
     },
     songTime(e) { // 歌曲时长
-      this.totalTime = this.transTime(e.target.duration);
+      this.totalTime = this.transTime(e.target.duration)
     },
     transTime(time) { // 时间格式化
-      let minute = parseInt(time / 60);
-      minute = minute < 10 ? "0" + minute : minute;
-      let sec = parseInt(time % 60);
-      sec = sec < 10 ? "0" + sec : sec;
-      return minute + ":" + sec;
+      let minute = parseInt(time / 60)
+      minute = minute < 10 ? "0" + minute : minute
+      let sec = parseInt(time % 60)
+      sec = sec < 10 ? "0" + sec : sec
+      return minute + ":" + sec
     },
     timeupdate() { // 播放位置改变时
-      let audio = this.$refs.audio;
-      this.$refs.pb.style.width = (Math.floor(audio.currentTime) / Math.floor(audio.duration)) * 100 + "%";
+      let audio = this.$refs.audio
+      this.$refs.pb.style.width = (Math.floor(audio.currentTime) / Math.floor(audio.duration)) * 100 + "%"
       this.time = this.transTime(audio.currentTime);
+      setTimeout(() => { // 缓存时间
+        this.$refs.hc.style.width = (Math.floor(audio.buffered.end(audio.buffered.length - 1)) / Math.floor(audio.duration)) * 100 + '%'
+      },100)
     },
     alterPlace(e) { // 点击改变进度条位置
       if (e.target == this.$refs.dian) return
@@ -237,7 +268,7 @@ export default {
         let planWidth = this.$refs.plan.offsetWidth
         let rate = e.offsetX / planWidth
         audio.currentTime = audio.duration * rate
-        this.timeupdate();
+        this.timeupdate()
       }
     },
     getVolume() { // 获取音量
@@ -291,9 +322,46 @@ export default {
     showSongList() { // 显示播放列表
       if(!this.playList){
         this.playList = true
+        setTimeout(this.highlight,100)
       } else {
         this.playList = false
       }
+    },
+    highlight() { // 高亮
+      const list = this.$refs.list
+      const box = this.$refs.wrapper
+      for (let i = 0; i < list.length; i++) {
+        list[i].classList.remove("setColor"); //去掉高亮
+      }
+      list[this.index].classList.add("setColor");//高亮显示当前行
+      let visible = (box.scrollTop + box.offsetHeight) - 8
+      if(list[this.index].offsetTop >= visible){
+        box.scrollTo(0,list[this.index].offsetTop - (list[this.index].offsetHeight * 8))
+      } else if(box.scrollTop > list[this.index].offsetTop){
+        box.scrollTo(0,list[this.index].offsetTop)
+      }
+    },
+    selectPlay(item,index) { // 选择播放歌曲
+      this.index = index
+      this.stop()
+      this.songId = this.songList[index].id
+      this.getUrl()
+    },
+    enterTntoItme(index){ // 歌曲移入高亮
+      let list = this.$refs.list
+      list[index].style.backgroundColor = '#000'
+      list[index].childNodes[1].classList.add('list_color')
+      list[index].childNodes[2].classList.remove('hidden')
+      list[index].childNodes[3].classList.add('list_color')
+      list[index].childNodes[4].classList.add('list_color')
+    },
+    leaveItme(index) { // 歌曲移除删除高亮
+      let list = this.$refs.list
+      list[index].style.backgroundColor = ''
+      list[index].childNodes[1].classList.remove('list_color')
+      list[index].childNodes[2].classList.add('hidden')
+      list[index].childNodes[3].classList.remove('list_color')
+      list[index].childNodes[4].classList.remove('list_color')
     }
   },
   computed: {
@@ -302,7 +370,7 @@ export default {
     }
   },
   filters: {
-    filterTime(time) {
+    filterTime(time) { // 分钟过滤
       let minute = parseInt(time / 60);
       minute = minute < 10 ? "0" + minute : minute;
       let sec = parseInt(time % 60);
@@ -310,19 +378,25 @@ export default {
       return minute + ":" + sec;
     }
   },
-  created() {},
+  created() {
+    if(JSON.parse(localStorage.getItem('songData'))){  // 获取本地存储的歌单
+      this.number = this.songList.length
+      this.index = parseInt(localStorage.getItem('index'))
+      getSongUrl(this.songList[this.index].id).then(res => {
+        if (res.data.code === 200) {
+          this.autoStart = false
+          this.songUrl = res.data.data[0].url
+          this.songImg = this.songList[this.index].al.picUrl
+          this.songName = this.songList[this.index].name
+          this.songSinger = this.songList[this.index].ar[0].name
+        }
+      });
+    }
+  },
   mounted() { // dom元素挂载完毕
     this.shiftIn()
-    setTimeout(this.shiftOut,1000)
-  },
-  beforeUpdate() { // 数据更新后
-    new IScroll(".wrapper",{
-      mouseWheel: true, //允许鼠标滚动
-      scrollbars:true, //显示滚动条
-      bounce:true, //反弹动画
-      click:true //允许容器内元素能绑定点击事件
-    })
-  },
+    this.stopTime = setTimeout(this.shiftOut,1000)
+  }
 };
 </script>
 
@@ -350,7 +424,6 @@ export default {
     margin: 0 auto;
     display: flex;
     align-items: center;
-    // background-color: pink;
     .control {
       width: 125px;
       height: 50px;
@@ -408,11 +481,15 @@ export default {
       width: 493px;
       height: 9px;
       float: left;
-      background: url("../assets/images/010.png") 0px -30px;
+      position: relative;
+      background: url("../assets/images/010.png") 0px 0px;
       .pb {
         width: 0px;
         height: 9px;
-        position: relative;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        z-index: 2;
         background: url("../assets/images/010.png") 0px -66px;
         span {
           width: 22px;
@@ -422,6 +499,15 @@ export default {
           right: -10px;
           background: url("../assets/images/003.png") -2px -283px;
         }
+      }
+      .hc {
+        width: 0px;
+        height: 9px;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        border-radius: 5px;
+        background: url("../assets/images/010.png") 0px -30px;
       }
     }
     .time {
@@ -485,6 +571,7 @@ export default {
         position: absolute;
         top: -146px;
         left: 9px;
+        z-index: 2;
         background-color: #292929;
         .tiao{
             width: 4px;
@@ -602,6 +689,15 @@ export default {
       text-align: center;
       line-height: 41px;
       font-size: 14px;
+      span{
+        width: 350px;
+        height: 41px;
+        display: block;
+        margin: 0 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .close{
         width: 16px;
         height: 16px;
@@ -617,14 +713,24 @@ export default {
       height: 260px;
       float: left;
       margin-left: 2px;
-      overflow: hidden;
-      background-color: rgba(18, 18, 18, .5)
+      overflow: scroll;
+      overflow-x: hidden;
+      background-color: rgba(18, 18, 18, .4)
+    }
+    .wrapper::-webkit-scrollbar {
+      width: 6px;
+      background-color: #120e0d
+    }
+    .wrapper::-webkit-scrollbar-thumb{  
+      border-radius: 10px; 
+      background-color: #484443;  
     }
     .ul-list{
+      position: relative;
       li{
-        width: 525px;
+        width: 549px;
         height: 28px;
-        padding-left: 30px;
+        cursor: pointer;
         span{
           float: left;
           height: 28px;
@@ -633,18 +739,65 @@ export default {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .songName{
-          width: 350px;
-          color: #ccc;
+        .play-icon{
+          float: left;
+          width: 18px;
+          height: 28px;
+          margin-right: 5px;
         }
-        .songSinger{
-          width: 80px;
-          color: #9b9b9b;
+        .icon{
+          width: 10px;
+          height: 13px;
+          margin: 0 auto;
+          margin-top: 9px;
+          background: url('../assets/images/011.png') no-repeat -181px 0px;
         }
-        .songTime{
-          width: 80px;
-          color: #666;
+        .list_color{
+          color: #fff;
         }
+        .hidden{
+          visibility: hidden;
+        }
+      }
+      .songName{
+        width: 250px;
+        color: #ccc;
+      }
+      .goNeng{
+        width: 95px;
+        padding-left: 5px;
+        i{
+          float: left;
+          width: 16px;
+          height: 16px;
+          margin: 7px 0px 0px 5px;
+          background: url('../assets/images/011.png') no-repeat -24px 2px;
+        }
+        .icon2{
+          background-position: 2px 2px;
+        }
+        .icon3{
+          background-position: -56px -49px;
+        }
+        .icon4{
+          background-position: -50px 2px;
+        }
+      }
+      .songSinger{
+        width: 60px;
+        color: #9b9b9b;
+        margin-right: 10px;
+      }
+      .songTime{
+        width: 80px;
+        color: #666;
+        text-align: center;
+      }
+      .songSinger:hover{
+        text-decoration: underline;
+      }
+      li.setColor{
+        background-color: rgba(0, 0, 0, .3)
       }
     }
   }
