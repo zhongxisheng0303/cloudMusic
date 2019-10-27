@@ -88,6 +88,7 @@
           </div>
         </div>
         <div class="listPlay">
+          <!-- 歌曲列表 -->
           <div class="wrapper" ref="wrapper">
             <ul class="ul-list">
               <li v-for="(item,index1) in songList" :key="index1" ref="list" @click.stop="selectPlay(item,index1)" @mouseover="enterTntoItme(index1)" @mouseout="leaveItme(index1)">
@@ -106,6 +107,18 @@
               </li>
             </ul>
           </div>
+          <!-- 歌词列表 -->
+          <div class="song-lyric" ref="songLyric">
+            <ul class="lyric-list">
+              <li class="lyric" ref="lyric" v-for="(item,index) in lyric" :key="index">
+                {{ item.split('。')[1] }}
+                <br/>
+                <span v-if="showTranslate">
+                  {{ item.split('。')[2] }}&nbsp;
+                </span>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -113,7 +126,9 @@
 </template>
 
 <script>
-import { getSongUrl } from "../api/axios";
+import { getSongUrl, getLyric } from "../api/axios";
+let lineNo = 0; //当前行
+let C_pos = 2;
 export default {
   name: "player",
   data() {
@@ -127,6 +142,7 @@ export default {
       totalTime: "",
       time: "",
       number: "",
+      lyric: [], // 歌词
       showVolume: false, // 是否显示音量
       remove: true, // 是否移除移入和移出事件
       title: '循环', // 播放顺序
@@ -135,7 +151,8 @@ export default {
       playList:false, // 是否显示播放列表
       autoStart: false, // 自动播放
       add_index: null, // 是否是上一首还是下一首
-      stopTime: null, // 定时间的变量
+      stopTime: null, // 定时器的变量
+      showTranslate: false, // 是否翻译
     };
   },
   watch: { // 监听器
@@ -143,12 +160,11 @@ export default {
       let audio = this.$refs.audio
       audio.pause()
       this.$refs.stop.style.backgroundPosition = "-2px -204px";
-      audio.currentTime = 0
       this.songId = to[0].id // 重新赋值
       this.number = to.length // 歌曲数量
       this.index = 0 // 下标重置
       this.playList = false // 隐藏播放列表
-      this.getUrl() // 重新获取
+      this.getUrl() // 重新获取歌曲
     }
   },
   methods: {
@@ -159,9 +175,31 @@ export default {
     shiftOut() {
       this.$refs.muisc.style.top = "-5px"
     },
+    lyricHeight() { // 高亮当前的歌词
+      const list = this.$refs.lyric //歌词数组
+      const songLyric = this.$refs.songLyric
+      for (let i = 0; i < list.length; i++) {
+        list[i].classList.remove("high") //去掉高亮
+      }
+      list[lineNo].classList.add("high");//高亮显示当前行   
+       // 滚动歌词
+      if (lineNo > C_pos) {
+        songLyric.scrollTo(0,(lineNo - 2) * list[lineNo].offsetHeight)
+      }
+    },
+    getTime() { // 处理时间
+      let arr = [];
+      for (let i = 0; i < this.lyric.length; i++) {
+        arr.push(this.lyric[i].split("。")[0]);
+      }
+      return arr;
+    },
     getUrl() { // 获取歌曲地址
       this.autoStart = true
       let audio = this.$refs.audio
+      this.$refs.songLyric.scrollTo(0,0)
+      lineNo = 0
+      audio.currentTime = 0
       getSongUrl(this.songId).then(res => {
         if (res.data.code === 200) {
           audio.play()
@@ -169,19 +207,22 @@ export default {
             if(this.add_index == 1){ // 判断是否是上一首
               this.index++
               this.songId = this.songList[this.index].id
-              this.getUrl()
+              this.getUrl() // 重新获取歌曲
+              this.getSongLyric(this.songId) // 重新获取歌词
             } else if(this.add_index == 2){ // 判断是否是下一首
               this.index--
               this.songId = this.songList[this.index].id
-              this.getUrl()
+              this.getUrl() // 重新获取歌曲
+              this.getSongLyric(this.songId) // 重新获取歌词
             } else {
               this.index++
               this.songId = this.songList[this.index].id
-              audio.currentTime = 0
-              this.getUrl()
+              this.getUrl() // 重新获取歌曲
+              this.getSongLyric(this.songId) // 重新获取歌词
             }
           } else { // 正常流程
             this.highlight()
+            this.getSongLyric(this.songId) // 重新获取歌词
             this.$refs.stop.style.backgroundPosition = "-2px -165px"
             this.songUrl = res.data.data[0].url
             this.songImg = this.songList[this.index].al.picUrl
@@ -192,8 +233,65 @@ export default {
         }
       });
     },
+    getSongLyric(id) { // 获取歌词
+      getLyric(id).then( res => {
+        if(res.data.code === 200){
+          if(res.data.nolyric){
+            this.lyric = []
+          } else {
+            this.showTranslate = false
+            let songLyric = []
+            let songTime = []
+            const regular = /\[\d{2}:\d{2}.\d{1,3}]/g // 时间正则
+            let lrc = res.data.lrc.lyric.split('\n') // 截取歌词
+            while(!regular.test(lrc[0])){ // 去掉不包含时间的歌词
+              lrc = lrc.splice(1)
+            }
+            lrc[lrc.length - 1].length === 0 && lrc.pop() // 删除最后一个空歌词
+            lrc.forEach(value => { // 循环歌词
+              let time = value.match(regular) // 提取时间
+              let lyric = value.replace(regular,"") // 提取歌词
+              for(let i = 0; i < time.length; i++){
+                const sec = time[i].slice(1,-1).split(":") // 去掉中括号,从 : 开始截取
+                songTime.push((parseInt(sec[0]) * 60) + parseFloat(sec[1]))
+                songLyric.push( // 将最终的结果添加到歌词数组
+                  (parseInt(sec[0]) * 60) + parseFloat(sec[1]) + "。" + lyric
+                )
+              }
+            })
+            if(res.data.tlyric.lyric){ // 判断是否要翻译歌词
+              this.showTranslate = true
+              let tlrc = res.data.tlyric.lyric.split('\n') // 截取翻译歌词
+              while(!regular.test(tlrc[0])){ // 去掉不包含时间的歌词
+                tlrc = tlrc.splice(1)
+              }
+              tlrc[tlrc.length - 1].length === 0 && tlrc.pop() // 删除最后一个空歌词
+              let lyricTime = []
+              let lyric = []
+              tlrc.forEach(value => { // 循环歌词
+                let time = value.match(regular) // 提取时间
+                lyric.push(value.replace(regular,"")) // 提取歌词
+                for(let i = 0; i < time.length; i++){
+                  const sec = time[i].slice(1,-1).split(":") // 去掉中括号,从 : 开始截取
+                  lyricTime.push((parseInt(sec[0]) * 60) + parseFloat(sec[1]))
+                }
+              })
+              for(let i = 0; i < songTime.length; i++){ // 循环对比时间拼接翻译
+                for(let j = 0; j < lyricTime.length; j++){
+                  if(songTime[i] == lyricTime[j]){
+                    songLyric[i] = songLyric[i]  +  '。' + lyric[j]
+                  }
+                }
+              }
+            }
+            this.lyric = songLyric
+          }
+        }
+      })
+    },
     playOver() { // 播放结束下一首/点击下一首
       this.add_index = 1
+      this.$refs.songLyric.scrollTo(0,0)
       if(this.title == '随机' && this.random){ // 随机播放
         this.index = Math.floor(Math.random() * this.songList.length - 1)
         this.stop()
@@ -256,10 +354,19 @@ export default {
     timeupdate() { // 播放位置改变时
       let audio = this.$refs.audio
       this.$refs.pb.style.width = (Math.floor(audio.currentTime) / Math.floor(audio.duration)) * 100 + "%"
-      this.time = this.transTime(audio.currentTime);
+      this.time = this.transTime(audio.currentTime)
+      for(let i = 0; i < this.getTime().length; i++){ // 循环时间
+        if(this.getTime()[i] <= audio.currentTime){
+          lineNo = i
+        }
+      }
+      if (parseFloat(this.getTime()[lineNo]) <= audio.currentTime) { //歌词时间小于等于进度条的时间
+        this.lyricHeight(); //高亮当前行
+        lineNo++;
+      }
       setTimeout(() => { // 缓存时间
         this.$refs.hc.style.width = (Math.floor(audio.buffered.end(audio.buffered.length - 1)) / Math.floor(audio.duration)) * 100 + '%'
-      },100)
+      },500)
     },
     alterPlace(e) { // 点击改变进度条位置
       if (e.target == this.$refs.dian) return
@@ -384,6 +491,7 @@ export default {
       this.index = parseInt(localStorage.getItem('index'))
       getSongUrl(this.songList[this.index].id).then(res => {
         if (res.data.code === 200) {
+          this.getSongLyric(this.songList[this.index].id)
           this.autoStart = false
           this.songUrl = res.data.data[0].url
           this.songImg = this.songList[this.index].al.picUrl
@@ -801,5 +909,41 @@ export default {
       }
     }
   }
+}
+.song-lyric{
+  width: 425px;
+  height: 260px;
+  padding: 20px 0;
+  box-sizing: border-box;
+  overflow: scroll;
+  overflow-x: hidden;
+  float: left;
+  .lyric-list{
+    width: 354px;
+    position: relative;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .lyric{
+      height: auto !important;
+      height: 32px;
+      min-height: 32px;
+      line-height: 32px;
+      font-size: 12px;
+      color: #989898;
+      transition: all .7s;
+    }
+  .high{
+    color: #fff;
+    font-size: 14px;
+  }
+}
+.song-lyric::-webkit-scrollbar{
+  width: 6px;
+  background-color: #120e0d;
+}
+.song-lyric::-webkit-scrollbar-thumb{
+  border-radius: 10px;
+  background-color: #484443
 }
 </style>

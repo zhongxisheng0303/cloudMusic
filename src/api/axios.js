@@ -53,3 +53,11 @@ export const getSongUrl = (id) => { // 获取歌曲地址
         }
     })
 }
+
+export const getLyric = (id) => { // 获取歌词
+    return api.get('/lyric',{
+        params: {
+            id
+        }
+    })
+}
