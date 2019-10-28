@@ -108,7 +108,7 @@
             </ul>
           </div>
           <!-- 歌词列表 -->
-          <div class="song-lyric" ref="songLyric">
+          <div class="song-lyric" ref="songLyric" @mousewheel="mousewheel">
             <ul class="lyric-list">
               <li class="lyric" ref="lyric" v-for="(item,index) in lyric" :key="index">
                 {{ item.split('。')[1] }}
@@ -152,7 +152,9 @@ export default {
       autoStart: false, // 自动播放
       add_index: null, // 是否是上一首还是下一首
       stopTime: null, // 定时器的变量
+      showTime: null, 
       showTranslate: false, // 是否翻译
+      showMousewheel: true, // 是否滚动歌词
     };
   },
   watch: { // 监听器
@@ -236,7 +238,7 @@ export default {
     getSongLyric(id) { // 获取歌词
       getLyric(id).then( res => {
         if(res.data.code === 200){
-          if(res.data.nolyric){
+          if(res.data.needDesc){
             this.lyric = []
           } else {
             this.showTranslate = false
@@ -355,14 +357,16 @@ export default {
       let audio = this.$refs.audio
       this.$refs.pb.style.width = (Math.floor(audio.currentTime) / Math.floor(audio.duration)) * 100 + "%"
       this.time = this.transTime(audio.currentTime)
-      for(let i = 0; i < this.getTime().length; i++){ // 循环时间
-        if(this.getTime()[i] <= audio.currentTime){
-          lineNo = i
+      if(this.showMousewheel){ // 是否滚动歌词
+        for(let i = 0; i < this.getTime().length; i++){ // 循环时间
+          if(this.getTime()[i] <= audio.currentTime){
+            lineNo = i
+          }
         }
-      }
-      if (parseFloat(this.getTime()[lineNo]) <= audio.currentTime) { //歌词时间小于等于进度条的时间
-        this.lyricHeight(); //高亮当前行
-        lineNo++;
+        if (parseFloat(this.getTime()[lineNo]) <= audio.currentTime) { //歌词时间小于等于进度条的时间
+          this.lyricHeight(); //高亮当前行
+          lineNo++;
+        }
       }
       setTimeout(() => { // 缓存时间
         this.$refs.hc.style.width = (Math.floor(audio.buffered.end(audio.buffered.length - 1)) / Math.floor(audio.duration)) * 100 + '%'
@@ -469,6 +473,19 @@ export default {
       list[index].childNodes[2].classList.add('hidden')
       list[index].childNodes[3].classList.remove('list_color')
       list[index].childNodes[4].classList.remove('list_color')
+    },
+    mousewheel() { //是否滚动歌词
+      this.showMousewheel = false
+      if(this.showTime == null){
+        this.showTime = setTimeout(() => {
+          this.showMousewheel = true
+        },3000)
+      } else {
+        clearTimeout(this.showTime)
+        this.showTime = setTimeout(() => {
+          this.showMousewheel = true
+        },3000)
+      }
     }
   },
   computed: {
@@ -919,7 +936,7 @@ export default {
   overflow-x: hidden;
   float: left;
   .lyric-list{
-    width: 354px;
+    width: 410px;
     position: relative;
     margin: 0 auto;
     text-align: center;
