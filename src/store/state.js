@@ -8,11 +8,18 @@ Vue.use(Vuex)
 let songList = JSON.parse(localStorage.getItem('songData'))
 const store = new Vuex.Store({
     state: {
-      muiscList: songList ? songList : []
+      muiscList: songList ? songList : [],
+      index: 0,
     },
     mutations: {
      getMuisc(state,data) {
-         state.muiscList = data
+        if(data.index == 0){
+          state.muiscList = data.data
+          state.index = data.index
+        } else if(data.index == 1){
+          state.muiscList.push(data.data)
+          state.index = data.index
+        }
      }
     },
     actions: {

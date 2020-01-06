@@ -6,7 +6,8 @@ import VueRouter from 'vue-router'
 Vue.use(VueRouter)
 
 // 导入组件
-import index from 'view/index/index.vue'
+const index = () => import('view/index/index.vue') 
+const searchList = () => import('view/searchList/searchList.vue') 
 
 // 路由规则
 const routes = [
@@ -17,6 +18,10 @@ const routes = [
     {
         path: '/index',
         component: index
+    },
+    {
+        path: '/searchList',
+        component: searchList
     }
 ] 
 

@@ -1,18 +1,19 @@
 <template>
-  <ul class="songList">
-      <li v-for="(item,index) in songList" :key="index">
-        <div class="song-box">
-            <img class="song-img" :src="item.picUrl">
-            <a href="JavaScript:;" class="details" :title="item.name"></a>
-            <div class="song">
-                <span class="song-i"></span>
-                <span class="song-measure">{{ parseInt(item.playCount / 10000) }}万</span>
-                <a href="JavaScript:;" class="play" @click.stop="getSongListDetails(item.id)"></a>
+    <!-- 歌单列表 -->
+    <ul class="songList">
+        <li v-for="(item,index) in list" :key="index">
+            <div class="song-box">
+                <img class="song-img" :src="item.picUrl">
+                <a href="JavaScript:;" class="details" :title="item.name"></a>
+                <div class="song">
+                    <span class="song-i"></span>
+                    <span class="song-measure">{{ parseInt(item.playCount / 10000) }}万</span>
+                    <a href="JavaScript:;" class="play" @click.stop="getSongListDetails(item.id)"></a>
+                </div>
             </div>
-        </div>
-        <p class="song-title">{{ item.name }}</p>
-      </li>
-  </ul>
+            <p class="song-title">{{ item.name }}</p>
+        </li>
+    </ul>
 </template>
 
 <script>
@@ -21,28 +22,38 @@ export default {
     name: 'songList',
     data() {
         return{
-            songList: [], // 推荐歌单列表
+            list: [], // 推荐歌单列表
         }
     },
     methods: {
         getSongList() { // 获取歌单
             songList().then( res => {
                 if(res.data.code === 200){
-                    this.songList = res.data.result
+                    this.list = res.data.result
                 }
             })
         },
         getSongListDetails(id) { // 获取歌单的歌曲
             songListDetails(id).then( res => {
                 if(res.data.code === 200){ // 将歌曲列表添加到vuex
-                    localStorage.setItem('songData',JSON.stringify(res.data.playlist.tracks))
-                    this.$store.dispatch('getMuisc',res.data.playlist.tracks)
+                    this.$store.dispatch('getMuisc',{
+                        data: res.data.playlist.tracks,
+                        index: 0
+                    })
+                    setTimeout(() => {
+                        localStorage.setItem('songData',JSON.stringify(res.data.playlist.tracks))
+                    },1000)
                 }
             })
         }
     },
     created() {
         this.getSongList()
+    },
+    computed: {
+        songList() {
+            return this.$store.state.muiscList
+        }
     },
 }
 </script>

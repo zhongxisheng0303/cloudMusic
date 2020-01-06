@@ -161,10 +161,15 @@ export default {
     songList(to) { // 监听歌单是否改变
       let audio = this.$refs.audio
       audio.pause()
-      this.$refs.stop.style.backgroundPosition = "-2px -204px";
-      this.songId = to[0].id // 重新赋值
+      this.$refs.stop.style.backgroundPosition = "-2px -204px"
+      if(this.songCode == 0){ // 是否是歌单还是单曲
+        this.songId = to[0].id // 重新赋值
+        this.index = 0 // 下标重置
+      } else if(this.songCode == 1){
+        this.songId = to[to.length - 1].id // 重新赋值
+        this.index = to.length - 1 // 下标重置
+      }
       this.number = to.length // 歌曲数量
-      this.index = 0 // 下标重置
       this.playList = false // 隐藏播放列表
       this.getUrl() // 重新获取歌曲
     }
@@ -491,6 +496,9 @@ export default {
   computed: {
     songList() { // 获取vuex的歌曲列表
       return this.$store.state.muiscList;
+    },
+    songCode() { // 获取index
+      return this.$store.state.index
     }
   },
   filters: {

@@ -54,10 +54,29 @@ export const getSongUrl = (id) => { // 获取歌曲地址
     })
 }
 
+export const getSongDetail = (ids) => { // 获取歌曲详情
+    return api.get('/song/detail',{
+        params: {
+            ids
+        }
+    })
+}
+
 export const getLyric = (id) => { // 获取歌词
     return api.get('/lyric',{
         params: {
             id
+        }
+    })
+}
+
+export const getSearch = (search,id,page) => { // 获取搜索
+    return api.get('/search',{
+        params:{
+            keywords: search,
+            type: id,
+            limit: 30,
+            offset: page
         }
     })
 }

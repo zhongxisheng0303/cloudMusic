@@ -95,7 +95,7 @@
         <!-- 搜索 -->
         <div class="my-search fr">
           <span class="el-icon-search"></span>
-          <input type="text" placeholder="音乐/视频/电台/用户" />
+          <input type="text" v-model="search" placeholder="音乐/视频/电台/用户" @keyup.enter="searchData"/>
         </div>
         <!-- 登录 -->
         <my-login v-show="loginBox">
@@ -209,6 +209,7 @@ export default {
       },
       userData: [], // 用户数据
       userPhoto: {}, // 用户头像
+      search: '',
     };
   },
   //方法
@@ -249,6 +250,18 @@ export default {
             alert('登录失败！')
           }
         })
+      }
+    },
+    searchData() { // 跳转到搜索页
+      if(this.search != ''){
+        this.$router.push({
+          path:'searchList',
+          query: {
+            search: this.search
+          }
+        })
+      } else {
+        return
       }
     }
   },
