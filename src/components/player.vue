@@ -90,7 +90,7 @@
         <div class="listPlay">
           <!-- 歌曲列表 -->
           <div class="wrapper" ref="wrapper">
-            <ul class="ul-list">
+            <ul class="ul-list" ref="ulList">
               <li v-for="(item,index1) in songList" :key="index1" ref="list" @click.stop="selectPlay(item,index1)" @mouseover="enterTntoItme(index1)" @mouseout="leaveItme(index1)">
                 <i class="play-icon">
                   <div class="icon" v-if="index == index1"></div>
@@ -106,10 +106,13 @@
                 <span class="songTime" :style="{'color': (index == index1 ? '#fff' : '')}">{{ item.dt / 1000 | filterTime }}</span>
               </li>
             </ul>
+            <div class="roll-box" ref="rollBox">
+              <div class="scroll-bar" ref="scrollBar" @mousedown="songClick"></div>
+            </div>
           </div>
           <!-- 歌词列表 -->
-          <div class="song-lyric" ref="songLyric" @mousewheel="mousewheel">
-            <ul class="lyric-list">
+          <div class="song-lyric" ref="songLyric">
+            <ul class="lyric-list" ref="lyricList">
               <li class="lyric" ref="lyric" v-for="(item,index) in lyric" :key="index">
                 {{ item.split('。')[1] }}
                 <br/>
@@ -118,6 +121,9 @@
                 </span>
               </li>
             </ul>
+            <div class="roll-box" ref="lyricBox">
+              <div class="scroll-bar" ref="lyricRoll" @mousedown="lyricClick"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -127,6 +133,7 @@
 
 <script>
 import { getSongUrl, getLyric } from "../api/axios";
+import CustomRoll from "../assets/js/scroll";
 let lineNo = 0; //当前行
 let C_pos = 2;
 export default {
@@ -155,6 +162,9 @@ export default {
       showTime: null, 
       showTranslate: false, // 是否翻译
       showMousewheel: true, // 是否滚动歌词
+      songScroll: null,
+      lyricScroll: null,
+      isFireFox: '',
     };
   },
   watch: { // 监听器
@@ -185,13 +195,22 @@ export default {
     lyricHeight() { // 高亮当前的歌词
       const list = this.$refs.lyric //歌词数组
       const songLyric = this.$refs.songLyric
+      const lyricList = this.$refs.lyricList
+      const lyricRoll = this.$refs.lyricRoll
       for (let i = 0; i < list.length; i++) {
         list[i].classList.remove("high") //去掉高亮
       }
       list[lineNo].classList.add("high");//高亮显示当前行   
-       // 滚动歌词
+      // 滚动歌词
       if (lineNo > C_pos) {
-        songLyric.scrollTo(0,(lineNo - 2) * list[lineNo].offsetHeight)
+        let listTop = (lineNo - 2) * list[lineNo].offsetHeight
+        let isRoll = lyricRoll.offsetTop + 3 > (songLyric.offsetHeight - lyricRoll.offsetHeight)
+        if(!isRoll) { // 歌词到底不滚动
+          lyricList.style.top = -listTop + 'px'
+        } else if(list[lineNo].offsetTop < Math.abs(lyricList.offsetTop)) { // 点击进度条滚动歌词
+          lyricList.style.top = -listTop + 'px'
+        }
+        lyricRoll.style.top = (Math.abs(lyricList.offsetTop) / songLyric.offsetHeight) * lyricRoll.offsetHeight + 'px'
       }
     },
     getTime() { // 处理时间
@@ -204,7 +223,8 @@ export default {
     getUrl() { // 获取歌曲地址
       this.autoStart = true
       let audio = this.$refs.audio
-      this.$refs.songLyric.scrollTo(0,0)
+      this.$refs.lyricList.style.top = '0px'
+      this.$refs.lyricRoll.style.top = '0px'
       lineNo = 0
       audio.currentTime = 0
       getSongUrl(this.songId).then(res => {
@@ -292,13 +312,15 @@ export default {
               }
             }
             this.lyric = songLyric
+            this.$nextTick(() => {
+              this.getLyricScroll()
+            })
           }
         }
       })
     },
     playOver() { // 播放结束下一首/点击下一首
       this.add_index = 1
-      this.$refs.songLyric.scrollTo(0,0)
       if(this.title == '随机' && this.random){ // 随机播放
         this.index = Math.floor(Math.random() * this.songList.length - 1)
         this.stop()
@@ -438,7 +460,10 @@ export default {
     showSongList() { // 显示播放列表
       if(!this.playList){
         this.playList = true
-        setTimeout(this.highlight,100)
+        this.$nextTick(() => {
+          this.highlight()
+          this.getLyricScroll()
+        })
       } else {
         this.playList = false
       }
@@ -446,15 +471,67 @@ export default {
     highlight() { // 高亮
       const list = this.$refs.list
       const box = this.$refs.wrapper
+      const ulList = this.$refs.ulList
+      const rollBox = this.$refs.rollBox
+      const scrollBar = this.$refs.scrollBar
+      this.songScroll = new CustomRoll(box, ulList, rollBox, scrollBar)
       for (let i = 0; i < list.length; i++) {
         list[i].classList.remove("setColor"); //去掉高亮
       }
       list[this.index].classList.add("setColor");//高亮显示当前行
-      let visible = (box.scrollTop + box.offsetHeight) - 8
+      // 自定义滚动条滚动方法
+      let visible = (Math.abs(ulList.offsetTop) + box.offsetHeight) - 8
       if(list[this.index].offsetTop >= visible){
-        box.scrollTo(0,list[this.index].offsetTop - (list[this.index].offsetHeight * 8))
-      } else if(box.scrollTop > list[this.index].offsetTop){
-        box.scrollTo(0,list[this.index].offsetTop)
+        let listTop = list[this.index].offsetTop - (list[this.index].offsetHeight * 8)
+        ulList.style.top = -listTop + 'px'
+        scrollBar.style.top = (Math.abs(ulList.offsetTop) / box.offsetHeight) * scrollBar.offsetHeight + 'px'
+      } else if(Math.abs(ulList.offsetTop) > list[this.index].offsetTop){
+        ulList.style.top = -list[this.index].offsetTop + 'px'
+        scrollBar.style.top = (Math.abs(ulList.offsetTop) / box.offsetHeight) * scrollBar.offsetHeight + 'px'
+      }
+      // 浏览器默认的滚动的方法
+      // let visible = (box.scrollTop + box.offsetHeight) - 8
+      // if(list[this.index].offsetTop >= visible){
+      //   box.scrollTo(0,list[this.index].offsetTop - (list[this.index].offsetHeight * 8))
+      // } else if(box.scrollTop > list[this.index].offsetTop){
+      //   box.scrollTo(0,list[this.index].offsetTop)
+      // }
+    },
+    songRoll(e) { // 歌曲滚轮自定义滚动
+      this.songScroll.rollContent(e)
+    },
+    songClick(e) { // 歌曲拖拽自定义滚动
+      this.songScroll.clickScrollBar(e)
+      // 鼠标拖拽
+      document.onmousemove = (ev) => {
+        this.songScroll.dragScrollBar(ev)
+      }
+      // 鼠标抬起
+      document.onmouseup = () => {
+        document.onmousemove = null
+      }
+    },
+    getLyricScroll() { // 歌词自定义滚动条
+      let songLyric = this.$refs.songLyric
+      let lyricList = this.$refs.lyricList
+      let lyricBox = this.$refs.lyricBox
+      let lyricRoll = this.$refs.lyricRoll
+      this.lyricScroll = new CustomRoll(songLyric, lyricList, lyricBox, lyricRoll)
+    },
+    lyricRoll(e) { // 歌词滚轮自定义滚动
+      this.mousewheel()
+      this.lyricScroll.rollContent(e)
+    },
+    lyricClick(e) { // 歌词拖拽自定义滚动
+      this.lyricScroll.clickScrollBar(e)
+      // 鼠标拖拽
+      document.onmousemove = (ev) => {
+        this.mousewheel()
+        this.lyricScroll.dragScrollBar(ev)
+      }
+      // 鼠标抬起
+      document.onmouseup = () => {
+        document.onmousemove = null
       }
     },
     selectPlay(item,index) { // 选择播放歌曲
@@ -511,6 +588,7 @@ export default {
     }
   },
   created() {
+    this.isFireFox = window.navigator.userAgent.toLowerCase();
     if(JSON.parse(localStorage.getItem('songData'))){  // 获取本地存储的歌单
       this.number = this.songList.length
       this.index = parseInt(localStorage.getItem('index'))
@@ -529,6 +607,16 @@ export default {
   mounted() { // dom元素挂载完毕
     this.shiftIn()
     this.stopTime = setTimeout(this.shiftOut,1000)
+    const box = this.$refs.wrapper
+    const lyricBox = this.$refs.songLyric
+    // 添加滚动事件
+    if(this.isFireFox.indexOf('firefox') != -1) {
+      box.addEventListener('DOMMouseScroll',this.songRoll,false)
+      lyricBox.addEventListener('DOMMouseScroll',this.lyricRoll,false)
+    } else {
+      box.addEventListener('mousewheel',this.songRoll,true)
+      lyricBox.addEventListener('mousewheel',this.lyricRoll,true)
+    }
   }
 };
 </script>
@@ -846,17 +934,9 @@ export default {
       height: 260px;
       float: left;
       margin-left: 2px;
-      overflow: scroll;
-      overflow-x: hidden;
-      background-color: rgba(18, 18, 18, .4)
-    }
-    .wrapper::-webkit-scrollbar {
-      width: 6px;
-      background-color: #120e0d
-    }
-    .wrapper::-webkit-scrollbar-thumb{  
-      border-radius: 10px; 
-      background-color: #484443;  
+      overflow: hidden;
+      background-color: rgba(18, 18, 18, .4);
+      position: relative;
     }
     .ul-list{
       position: relative;
@@ -933,21 +1013,37 @@ export default {
         background-color: rgba(0, 0, 0, .3)
       }
     }
+    .roll-box {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 6px;
+      height: 100%;
+      background-color: #120e0d;
+    }
+    .scroll-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 6px;
+      border-radius: 5px;
+      transition: all .1s;
+      background-color: #484443;
+    }
   }
 }
 .song-lyric{
   width: 425px;
   height: 260px;
-  padding: 20px 0;
-  box-sizing: border-box;
-  overflow: scroll;
-  overflow-x: hidden;
-  float: left;
+  overflow: hidden;
+  position: relative;
   .lyric-list{
     width: 410px;
     position: relative;
+    padding: 20px 0;
     margin: 0 auto;
     text-align: center;
+    transition: all .1s;
   }
   .lyric{
       height: auto !important;
