@@ -9,8 +9,6 @@ const api = axios.create({
     baseURL: 'https://autumnfish.cn/'
 })
 
-// 拦截器
-
 // 暴露接口
 export const loginPhone = ({user,password}) => { // 手机登录
     return api.post('/login/cellphone',{
