@@ -1,5 +1,5 @@
 // 导入axios
-import axios from 'axios'
+import axios from 'axios';
 
 // 导入router
 // import router from '../router/router'
@@ -7,7 +7,7 @@ import axios from 'axios'
 // 创建axios,并且设置基地址
 const api = axios.create({
     baseURL: 'https://autumnfish.cn/'
-})
+});
 
 // 暴露接口
 export const loginPhone = ({user,password}) => { // 手机登录
@@ -15,18 +15,18 @@ export const loginPhone = ({user,password}) => { // 手机登录
         phone: user,
         password: password
     })
-}
+};
 
 export const login = ({user,password}) => { // 邮箱登录
     return api.post('/login',{
         email: user,
         password: password
     })
-}
+};
 
 export const banner = () => { // 轮播图
     return api.get('banner')
-}
+};
 
 export const songList = () => { // 歌单
     return api.get('personalized',{
@@ -34,7 +34,7 @@ export const songList = () => { // 歌单
             limit: 8
         }
     })
-}
+};
 
 export const songListDetails = (id) => { // 歌单详情
     return api.get('/playlist/detail',{
@@ -42,7 +42,7 @@ export const songListDetails = (id) => { // 歌单详情
             id
         }
     })
-}
+};
 
 export const getSongUrl = (id) => { // 获取歌曲地址
     return api.get('/song/url',{
@@ -50,7 +50,7 @@ export const getSongUrl = (id) => { // 获取歌曲地址
             id
         }
     })
-}
+};
 
 export const getSongDetail = (ids) => { // 获取歌曲详情
     return api.get('/song/detail',{
@@ -58,7 +58,7 @@ export const getSongDetail = (ids) => { // 获取歌曲详情
             ids
         }
     })
-}
+};
 
 export const getLyric = (id) => { // 获取歌词
     return api.get('/lyric',{
@@ -66,7 +66,7 @@ export const getLyric = (id) => { // 获取歌词
             id
         }
     })
-}
+};
 
 export const getSearch = (search,id,page) => { // 获取搜索
     return api.get('/search',{
@@ -77,4 +77,4 @@ export const getSearch = (search,id,page) => { // 获取搜索
             offset: page
         }
     })
-}
+};
